@@ -2,81 +2,96 @@
 # -*- coding: utf-8 -*-
 
 # Title : graphinger
-# Author : Maximilien Danisch
+# Author Original : Maximilien Danisch
 # Contributor : Viala Axel
-# Last edition time : 27-02-2013
+# Last edition time : 17-04-2013
 #
-# Goal : Making a representation of a graph
+# Goal : Making a representation of a community
+# graph arround a node, please use the Carop algorithm
+# develloped by Maximilien before using for good visualisations.
 # Usage : graphinger.py "dir(s)" or graphinger.py "file(s)"
 #
-# Develloped at Lip6 for Complex Networks project.
+# Develloped at Lip6 for an internship in Complex Networks team.
+# This is a research purpose script use it at your own responsability
+#
+# With the Maximilien Danisch autorisation for modification,
+# relicencing or everything on these script.
+#
+# Copyright © 2013 Axel Viala <darnuria@lavabit.com>
+# This work is free. You can redistribute it and/or modify it under the
+# terms of the Do What The Fuck You Want To Public License, Version 2,
+# as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.
 #
 
 import networkx as nx
 import matplotlib.pyplot as plt
+import argparse
+import codecs
 from os import listdir
 from os.path import isfile
-import sys
+from sys import exit
 from string import split, join
-import codecs
 
-def ploting(data, IDNode, delNode = False):
-    filenameResult = "{0}.png".format(data) # Name of the picture.
+def ploting(data, IDNode, labels, stats,delNode=False):
+    filenameResult = "{}.png".format(data)
     new_neighbors = []
     Graph = nx.Graph(nx.read_edgelist(data,
                                       nodetype = int))
     neighbors = Graph.neighbors(IDNode)
-    Graph = addLabel(Graph, "IDname.txt")
+    if labels :
+        Graph = addLabel(Graph, labels)
     Graph = addData(Graph, neighbors, "color", "green")
     neighborsLen = len(neighbors)
     nodesLen = nx.number_of_nodes(Graph)
 
-    stat(Graph, IDNode, neighbors, neighborsLen, nodesLen)
+    # Still in dev
+    # stat(Graph, IDNode, neighbors, neighborsLen, nodesLen)
 
     if delNode:
-        print("\tDeleting : {0}.".format(IDNode))
+        # logging.info("\tDeleting : %d.",IDNode)
+        print("\tDeleting : {}.".format(IDNode))
         Graph.remove_node(IDNode)
-        Graph = eliminateAloneNode(Graph) # Optionnal
+        Graph = eliminateAloneNode(Graph)
         for node in neighbors:
             if node in Graph.nodes():
                 new_neighbors.append(node)
         else:
             new_neighborsLen = len(new_neighbors) # Number of direct nodes after
             neighbors = new_neighbors
-        filenameResult = "less_{0}_{1}".format(IDNode,
-                                               filenameResult) # Modify the name.
-        stat(Graph, IDNode, neighbors, neighborsLen, nodesLen)
-    #writeGraph(Graph, data, "gml") # gml or gexf
-    #pos = nx.spring_layout(Graph)
+        filenameResult = "less_{}_{}".format(IDNode,
+                                               filenameResult)# Modify the name.
+
+        # stat(Graph, IDNode, neighbors, neighborsLen, nodesLen)
+    # writeGraph(Graph, data, "gml")
+    # gml or gexf have some probleme with utf8 encoding.
+    # pos = nx.spring_layout(Graph)
     drawing(Graph, nx.spring_layout(Graph),
             IDNode, neighbors, filenameResult)
-# End main
 
 def stat(Graph, IDNode, neighbors, neighborsLen, nodesLen):
-    print("-------------------------------------------")
+    print("-" * 42)
     print("Statisticals : ")
     rateNeighbors = (float(len(neighbors)) /
                      float(nx.number_of_nodes(Graph))) * 100
-    print("\tDirectly connected to {0} : {1}->{2}%.".format(
+    print("\tDirectly connected to {} : {}->{}%.".format(
             IDNode,
             len(neighbors),
             rateNeighbors))
-    print("\tNodes : {0}, Edges : {1}, Neighbors of {2} : {3}.".format(
+    print("\tNodes : {}, Edges : {}, Neighbors of {} : {}.".format(
             nx.number_of_nodes(Graph),
             nx.number_of_edges(Graph),
             IDNode,
             rateNeighbors)) # Control.
     if len(neighbors) != neighborsLen :
-        print("-------------------------------------------")
+        print("-" * 42)
         print("\tAfter deleting {0} : ".format(IDNode))
         deletedNeighbors = neighborsLen - len(neighbors)
         rateDeleted = float(deletedNeighbors) / float(neighborsLen) * 100
         rateDeletedTotal =  float(deletedNeighbors) / float(nodesLen) * 100
-        print("""\t{0} Alones nodes deleted
-\tRate deletedNeighbors/totalNeighbors : {1}%.""".format(deletedNeighbors,
+        print("""\t{} Alones nodes deleted
+\tRate deletedNeighbors/totalNeighbors : {}%.""".format(deletedNeighbors,
                                                        rateDeleted))
-    print("-------------------------------------------")
-# End stat
+    print("-" * 42)
 
 def drawing(Graph, pos, IDNode, neighbors, filenameResult):
     nx.draw_networkx_nodes(Graph, pos,
@@ -87,14 +102,14 @@ def drawing(Graph, pos, IDNode, neighbors, filenameResult):
                            node_size = 40)
     nx.draw_networkx_edges(Graph,pos,
                            alpha = 0.3)
-    #nx.draw_networkx_labels(Graph, pos, labels = dict(
+    # nx.draw_networkx_labels(Graph, pos, labels = dict(
     #        (n[0], n[1]['label']) for n in Graph.nodes(data=True)))
-    # Too much information see it in tulip :/
+    # Too much information see it with tulip. :/
     plt.axis("off")
+    # logging.info("\tFactoring %s.", filenameResult)
     print("\tFactoring {0}.".format(filenameResult))
-    #plt.savefig(filenameResult) # Add making dir?
-    plt.show() #Slow a little the trip.
-# End drawing
+    # plt.savefig(filenameResult) # Add making dir?
+    plt.show()
 
 def eliminateAloneNode(Graph):
     for node in Graph.nodes():
@@ -102,74 +117,96 @@ def eliminateAloneNode(Graph):
         if nodeDegree == 0:
             Graph.remove_node(node)
     return Graph
-# End eliminate
 
 def addData(Graph, NodeList ,typeInfo, info):
     for node in NodeList:
         Graph.node[node][typeInfo] = info
     return Graph
-# end addData
 
 def addLabel(Graph, labelList):
-    labelFile = codecs.open(labelList, "r", "utf-8")
-    #labelFile = open(labelList, 'r')
+    labelFile = open(labelList, 'r')
     labelLines = labelFile.readlines()
-    #print(labelLines)
     labelFile.close()
+    # A little bit greedy.
+    # !! FixMe : Using a generator or keyword yield?
     for node in Graph.nodes():
         try:
             label = split(labelLines[node])
             #print("numNode : {0}, label : {1}".format(
             #        label[0], u" ".join(label[1:])))
+            # !! FixMe : logging module?
             Graph.node[node]["label"] = u" ".join(label[1:])
-            # !Multiple encoding in the file...!
-            # print(node, unicode(Graph.node[node]["label"]))
-            #print("")
         except UnicodeEncodeError, error:
-            print("Error Context : {0}".format(label)) #Debuging line
+            print("Error Context : {0}".format(label))
+            # !! FixMe : using logging module?
             print(error)
     return Graph
-# end addLabel
-# DELET
 
+# Problems with multiple Encoding in the data file.
+# So it's impossible at the moment to export correctly the file.
 def writeGraph(Graph, name, filetype):
     if filetype == "gml":
-        print("Write {0}.gml".format(name))
-        nx.write_gml(Graph, name+".gml")
-    # elif filetype == "gexf": # Bug actualy with python2...
-    #    print("Write {0}.gexf".format(name))
-    #   nx.write_gexf(Graph, name+".gexf", prettyprint = True)
+        # logging.info("Write %s.%s", name, filetype)
+        print("Write {}.gml".format(name))
+        nx.write_gml(Graph, name + ".gml")
     else:
-        print("{0} is not a valid filetype, please use gml.".format(filetype))
-# end writeGraph
+        # logging.info("%s is not a valid filetype, please use gml.", filetype)
+        print("{} is not a valid filetype, please use gml.".format(filetype))
 
-def main(args):
-    print('Go Go Algo Go!!')
-    label = 1570174
-    for i,arg in enumerate(args):
-        if isfile(arg):
-            print("Processing {0}.".format(arg))
-            #ploting(arg, label) # arg is a file.
-            print("\tPloting without ID : {0}.".format(label))
-            ploting(arg, label, True) # arg is a file
+HELP = {
+    'description': "Visualisation script, with node deletion.",
+    'dataset': "File or folder with datafile to processing.",
+    'stats': "Feature still in develloppement : Present statisics of the graph",
+    'node': "Node where the comunity detection has been launched, "
+    "this node will be deleted",
+    'labels': "Precise a file with the labels names for each nodes."
+    "like ex : 1524522 Potatoe."
+    }
+
+def main():
+    parser = argparse.ArgumentParser(description=HELP['description'])
+    parser.add_argument("dataset",
+                    type=str,
+                    nargs="+",
+                    help=HELP['dataset'],
+                     )
+    parser.add_argument('-n',"--node",
+                        type=int,
+                        default=1570174, # Biology in the Dataset.
+                        nargs='+',
+                        help=HELP['node'])
+    parser.add_argument('-s', "--stats",
+                    type=bool,
+                    dest="stats",
+                    help=HELP['stats'],
+                     )
+    parser.add_argument('-l', "--labels",
+                        type=str,
+                        dest="labels",
+                        help=HELP['labels']
+                        )
+    args = parser.parse_args()
+    print(args.dataset)
+    for i, data in enumerate(args.dataset):
+        if isfile(data):
+            print("Processing {0}.".format(data))
+            print("\tPloting without ID : {}.".format(args.node))
+            ploting(data, args.node, args.labels,
+                    args.stats ,delNode=True)
         else:
-            files = listdir(arg)
-            for data in files:
-                if isfile(data):
-                    print("Processing {0}.".format(data))
-                    #ploting(data, label)
-                    print("\tPloting without ID : {0}.".format(label))
-                    ploting(data, label, True)
+            data_files = listdir(data)
+            for data_file in data_files:
+                if isfile(data_file):
+                    print("Processing {}.".format(data_file))
+                    print("\tPloting without ID : {}.".format(args.node))
+                    ploting(data, args.node, args.labels,
+                            args.stats ,delNode=True)
                 else:
-                    print("\t{0} is not a file. Work aborded.".format(data))
-    else :
-        print("Work is done.")
-# End main
+                    print("\t{} is not a file. Work aborded.".format(data))
 
 if __name__ == "__main__":
     try:
-        main(sys.argv[1:]) # Slicing in order to eliminate argv[0].
+        main()
     except KeyboardInterrupt:
-        sys.exit(0)
-    print("Done")
-# EOF
+        exit(0)
+    exit(0)
